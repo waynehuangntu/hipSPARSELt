@@ -34,6 +34,7 @@ set(rocsparselt_source
   src/hcc_detail/rocsparselt/src/status.cpp
   src/hcc_detail/rocsparselt/src/utility.cpp
   src/hcc_detail/rocsparselt/src/rocsparselt_auxiliary.cpp
+  src/hcc_detail/rocsparselt/src/matrix_config.cpp
 
 # spmm
   src/hcc_detail/rocsparselt/src/spmm/rocsparselt_compress.cpp

@@ -30,10 +30,13 @@
 #include "rocsparselt.h"
 #include "rocsparselt_spmm_utils.hpp"
 #include "utility.hpp"
+#include "matrix_config.h"
 
+#include <hipsparselt/hipsparselt.h>
+#include <iostream>
 #include <hip/hip_runtime_api.h>
 
-template <typename Ti, int SG0I, int SG1J, int TT0I, int TT1J>
+template <typename Ti>
 __global__ void compress_kernel(const Ti*      in,
                                 Ti*            out,
                                 unsigned char* metadata,
@@ -51,13 +54,17 @@ __global__ void compress_kernel(const Ti*      in,
                                 int            num_batches,
                                 int64_t        sizes,
                                 int64_t        c_sizes,
-                                int64_t        m_sizes)
+                                int64_t        m_sizes,
+                                int SG0I,
+                                int SG1J,
+                                int TT0I,
+                                int TT1J)
 {
     constexpr int metadata_tiles_y = 8;
     constexpr int tiles_y          = 4;
 
-    constexpr unsigned int MT0I = SG0I * TT0I;
-    constexpr unsigned int MT1J = SG1J * TT1J;
+    const unsigned int MT0I = SG0I * TT0I;
+    const unsigned int MT1J = SG1J * TT1J;
 
     unsigned int serial = hc_get_workitem_id(0);
     unsigned int sg0I   = serial % SG0I;
@@ -71,7 +78,7 @@ __global__ void compress_kernel(const Ti*      in,
         return;
 
     //caculate the tagret address (offset) of the dense matrix.
-    int64_t stride           = sg0I * stride1 + sg1J * TT1J * stride2;
+    int64_t stride           = sg0I * TT0I * stride1 + sg1J * TT1J * stride2;
     int64_t wg_stride        = MT1J * wg1J * stride2 + MT0I * wg0I * stride1;
     int64_t b_stride         = batchId * batch_stride;
     int64_t globalReadOffset = b_stride + wg_stride + stride;
@@ -85,7 +92,7 @@ __global__ void compress_kernel(const Ti*      in,
 
     //caculate the tagret address (offset) of the metadata
     int64_t m_stride
-        = (sg0I * m_stride1) + (sg1J * TT1J * m_stride2 >> 3); // metadata's k is orginal k/8
+        = (sg0I * TT0I * m_stride1) + (sg1J * TT1J * m_stride2 >> 3); // metadata's k is orginal k/8
     int64_t m_wg_stride               = (MT0I * wg0I * m_stride1) + (MT1J * wg1J * m_stride2 >> 3);
     int64_t m_b_stride                = batchId * m_batch_stride;
     int64_t globalWriteMetadataOffset = m_b_stride + m_wg_stride + m_stride;
@@ -160,17 +167,59 @@ rocsparselt_status rocsparselt_smfmac_compress_template(const _rocsparselt_handl
                                                         Ti*                        d_out,
                                                         unsigned char*             d_metadata,
                                                         hipStream_t                stream)
-{
-    constexpr int SG0I = 16;
-    constexpr int SG1J = 2;
-    constexpr int TT0I = 1;
-    constexpr int TT1J = 8; //must be the multiplication of 8.
-    constexpr int MT0I = SG0I * TT0I;
-    constexpr int MT1J = SG1J * TT1J;
+{   
+        
+    int SG0I;
+    int SG1J;
+    int TT0I;
+    int TT1J; //must be the multiplication of 8.
+    if (global_SG0I == -1 || global_SG1J == -1 || global_TT0I == -1 || global_TT1J == -1) {
+        SG0I = 16;
+        SG1J = 2;
+        TT0I = 1;
+        TT1J = 8;
+        //std::cout << "Running baseline: " <<  "SG0I: " << SG0I << " SG1J: " << SG1J << " TT0I: " << TT0I << " TT1J: " << TT1J << std::endl;
+    } else {
+        MatrixConfig config = find_nearest_config(m, n);
+        SG0I = config.sg0i;
+        SG1J = config.sg1j;
+        TT0I = config.tt0i;
+        TT1J = config.tt1j;
+        // SG0I = global_SG0I;
+        // SG1J = global_SG1J;
+        // TT0I = global_TT0I;
+        // TT1J = global_TT1J;
+        //std::cout << "Running config: " << "SG0I: " << SG0I << " SG1J: " << SG1J << " TT0I: " << TT0I << " TT1J: " << TT1J << std::endl;
+    }
+    // const int SG0I = global_SG0I;
+    // const int SG1J = global_SG1J;
+    // const int TT0I = global_TT0I;
+    // const int TT1J = global_TT1J; //must be the multiplication of 8.
+    //#include <chrono>
+    //auto start = std::chrono::high_resolution_clock::now();
+    //MatrixConfig config = find_nearest_config(m, n);
+    //MatrixConfig config = find_upright_config(m, n);
+    //auto end = std::chrono::high_resolution_clock::now();
+    //std::chrono::duration<double> duration = end - start;
+    //std::cout << "Time taken for find_nearest_config and assignments: " << duration.count() << " seconds" << std::endl;
+
+    // const int SG0I = config.sg0i;
+    // const int SG1J = config.sg1j;
+    // const int TT0I = config.tt0i;
+    // const int TT1J = config.tt1j; //must be the multiplication of 8.
+    
+    // constexpr int SG0I = 16;
+    // constexpr int SG1J = 2;
+    // constexpr int TT0I = 1;
+    // constexpr int TT1J = 8; //must be the multiplication of 8.
+    //std::cout << "SG0I: " << SG0I << " SG1J: " << SG1J << " TT0I: " << TT0I << " TT1J: " << TT1J << std::endl;
+    std::cout << "Running config: " << "SG0I: " << SG0I << " SG1J: " << SG1J << " TT0I: " << TT0I << " TT1J: " << TT1J << std::endl;
+    const int MT0I = SG0I * TT0I;
+    const int MT1J = SG1J * TT1J;
 
     int block_x = m / MT0I + (m % MT0I > 0 ? 1 : 0);
     int block_y = n / MT1J + (n % MT1J > 0 ? 1 : 0);
-    hipLaunchKernelGGL((compress_kernel<Ti, SG0I, SG1J, TT0I, TT1J>), /* compute kernel*/
+    hipLaunchKernelGGL((compress_kernel<Ti>), /* compute kernel*/
                        dim3(block_x, block_y, num_batches),
                        dim3(SG0I * SG1J),
                        0 /*dynamic shared*/,
@@ -192,7 +241,11 @@ rocsparselt_status rocsparselt_smfmac_compress_template(const _rocsparselt_handl
                        num_batches,
                        num_batches * batch_stride,
                        num_batches * c_batch_stride,
-                       num_batches * m_batch_stride);
+                       num_batches * m_batch_stride,
+                       SG0I,
+                       SG1J,
+                       TT0I,
+                       TT1J);
     return rocsparselt_status_success;
 }
 

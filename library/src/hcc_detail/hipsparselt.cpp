@@ -57,6 +57,11 @@ extern "C" {
             return RocSparseLtStatusToHIPStatus(TMP_STATUS_FOR_CHECK);    \
         }                                                                 \
     }
+    
+int global_SG0I;  
+int global_SG1J;   
+int global_TT0I;   
+int global_TT1J;
 
 hipsparseStatus_t hipErrorToHIPSPARSEStatus(hipError_t status)
 {

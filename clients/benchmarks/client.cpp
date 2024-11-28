@@ -301,6 +301,22 @@ try
          value<int64_t>(&arg.K)->default_value(128),
          "Specific matrix size: the number of columns in A and rows in B.")
 
+        ("SG0I,SG0I",
+        value<int>(&arg.SG0I)->default_value(16),
+        "Specific SG0I kernel parameter (default: 16)")
+
+        ("SG1J,SG1J",
+         value<int>(&arg.SG1J)->default_value(2),
+         "Specific SG1J kernel parameter (default: 2)")
+
+        ("TT0I,TT0I",
+         value<int>(&arg.TT0I)->default_value(1),
+         "Specific TT0I kernel parameter (default: 1)")
+
+        ("TT1J,TT1J",
+         value<int>(&arg.TT1J)->default_value(8),
+         "Specific TT1J kernel parameter (default: 8)")
+
         ("lda",
          value<int64_t>(&arg.lda)->default_value(-1),
          "Leading dimension of matrix A.")
@@ -646,6 +662,22 @@ try
         else
             throw std::invalid_argument("Invalid value for --order_d " + std::to_string(order_d));
     }
+
+    hipsparselt_cout << "SG0I: " << arg.SG0I << std::endl;
+    hipsparselt_cout << "TT0I: " << arg.TT0I << std::endl;
+    hipsparselt_cout << "SG1J: " << arg.SG1J << std::endl;
+    hipsparselt_cout << "TT1J: " << arg.TT1J << std::endl;
+
+    global_SG0I = arg.SG0I;
+    global_SG1J = arg.SG1J;
+    global_TT0I = arg.TT0I;
+    global_TT1J = arg.TT1J;
+
+    hipsparselt_cout << "global_SG0I: " << global_SG0I << std::endl;
+    hipsparselt_cout << "global_TT0I: " << global_TT0I << std::endl;
+    hipsparselt_cout << "global_SG1J: " << global_SG1J << std::endl;
+    hipsparselt_cout << "global_TT1J: " << global_TT1J << std::endl;
+    
 
     arg.orderA = order != order_a ? order_a : order;
     arg.orderB = order != order_b ? order_b : order;

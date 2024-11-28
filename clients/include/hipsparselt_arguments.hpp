@@ -70,6 +70,11 @@ struct Arguments
     int64_t N;
     int64_t K;
 
+    int SG0I;
+    int SG1J;
+    int TT0I;
+    int TT1J;
+
     int64_t lda;
     int64_t ldb;
     int64_t ldc;

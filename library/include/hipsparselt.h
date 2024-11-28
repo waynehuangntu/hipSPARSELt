@@ -1173,6 +1173,11 @@ hipsparseStatus_t hipsparseLtSpMMACompress2(const hipsparseLtHandle_t*        ha
                                             void*                             d_compressBuffer,
                                             hipStream_t                       stream);
 
+HIPSPARSELT_EXPORT extern int global_SG0I;  
+HIPSPARSELT_EXPORT extern int global_SG1J;   
+HIPSPARSELT_EXPORT extern int global_TT0I;   
+HIPSPARSELT_EXPORT extern int global_TT1J;  
+
 #ifdef __cplusplus
 }
 #endif
